@@ -43,6 +43,7 @@ let mesh = new Mesh();
 let mat_proj = new Mat4x4();
 let mat_rotz = new Mat4x4();
 let mat_rotx = new Mat4x4();
+let camera = new Vec3d(0, 0, 0);
 
 function setup() {
 	createCanvas(1000, 800);
@@ -93,7 +94,7 @@ function setup() {
 let theta = 0.0;
 
 function draw() {
-	background(51);
+	background(0);
 
 	
 	theta += deltaTime / 1000.0;
@@ -125,31 +126,66 @@ function draw() {
 		tri_translated.p[1].z = tri_rot_zx.p[1].z + 3.0;
 		tri_translated.p[2].z = tri_rot_zx.p[2].z + 3.0;
 
+		// beginning getting cross product so can get normal of faces
+		let line1 = new Vec3d(tri_translated.p[1].x - tri_translated.p[0].x,
+							  tri_translated.p[1].y - tri_translated.p[0].y,
+							  tri_translated.p[1].z - tri_translated.p[0].z);
+		let line2 = new Vec3d(tri_translated.p[2].x - tri_translated.p[0].x,
+							  tri_translated.p[2].y - tri_translated.p[0].y,
+							  tri_translated.p[2].z - tri_translated.p[0].z);
+		let normal = new Vec3d(line1.y * line2.z - line1.z * line2.y,
+							   line1.z * line2.x - line1.x * line2.z,
+							   line1.x * line2.y - line1.y * line2.x);
+		let l = sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+		normal.x /= l;
+		normal.y /= l;
+		normal.z /= l;
+		
+		// use dot product to get normals, but take into account location of camera
+		if (normal.x * (tri_translated.p[0].x - camera.x) + 
+		    normal.y * (tri_translated.p[0].y - camera.y) + 
+			normal.z * (tri_translated.p[0].z - camera.z) < 0.0) {
 
-		let tri_projected = new Triangle(Mat4x4.multiply_matrix_vector(tri_translated.p[0], mat_proj),
-										 Mat4x4.multiply_matrix_vector(tri_translated.p[1], mat_proj),
-										 Mat4x4.multiply_matrix_vector(tri_translated.p[2], mat_proj));
+			// illumination
+			let light_direction = new Vec3d(0.0, 0.0, -1.0);
+			let l = sqrt(light_direction.x * light_direction.x + 
+						 light_direction.y * light_direction.y + 
+						 light_direction.z * light_direction.z);
+			light_direction.x /= l;
+			light_direction.y /= l;
+			light_direction.z /= l;
 
-		// scale into view
-		tri_projected.p[0].x += 1.0;
-		tri_projected.p[0].y += 1.0;
-		tri_projected.p[1].x += 1.0;
-		tri_projected.p[1].y += 1.0;
-		tri_projected.p[2].x += 1.0;
-		tri_projected.p[2].y += 1.0;
+			let dp = normal.x * light_direction.x + normal.y * light_direction.y + normal.z * light_direction.z;
+			
+			// projection
+			let tri_projected = new Triangle(Mat4x4.multiply_matrix_vector(tri_translated.p[0], mat_proj),
+											Mat4x4.multiply_matrix_vector(tri_translated.p[1], mat_proj),
+											Mat4x4.multiply_matrix_vector(tri_translated.p[2], mat_proj));
 
-		tri_projected.p[0].x *= 0.5 * width;
-		tri_projected.p[0].y *= 0.5 * height;
-		tri_projected.p[1].x *= 0.5 * width;
-		tri_projected.p[1].y *= 0.5 * height;
-		tri_projected.p[2].x *= 0.5 * width;
-		tri_projected.p[2].y *= 0.5 * height;
+			// scale into view
+			tri_projected.p[0].x += 1.0;
+			tri_projected.p[0].y += 1.0;
+			tri_projected.p[1].x += 1.0;
+			tri_projected.p[1].y += 1.0;
+			tri_projected.p[2].x += 1.0;
+			tri_projected.p[2].y += 1.0;
 
-		stroke(255, 255, 255);
-		noFill();						 
-		triangle(tri_projected.p[0].x, tri_projected.p[0].y,
-			     tri_projected.p[1].x, tri_projected.p[1].y,
-				 tri_projected.p[2].x, tri_projected.p[2].y);
+			tri_projected.p[0].x *= 0.5 * width;
+			tri_projected.p[0].y *= 0.5 * height;
+			tri_projected.p[1].x *= 0.5 * width;
+			tri_projected.p[1].y *= 0.5 * height;
+			tri_projected.p[2].x *= 0.5 * width;
+			tri_projected.p[2].y *= 0.5 * height;
+			
+			// drawing triangle at certain amount of gray to simulate shading
+			let color_rgb = 50 + dp * 205.0
+			stroke(color_rgb, color_rgb, color_rgb);
+			fill(color_rgb);
+
+			triangle(tri_projected.p[0].x, tri_projected.p[0].y,
+					tri_projected.p[1].x, tri_projected.p[1].y,
+					tri_projected.p[2].x, tri_projected.p[2].y);
+		}
 
 	}
 }
