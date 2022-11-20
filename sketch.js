@@ -16,6 +16,20 @@ class Mesh {
 	constructor() {
 		this.triangles = []
 	}
+
+	loadObj(obj_data) {
+		let verts = [];
+
+		for (let i = 0; i < obj_data["verts"].length; i++) {
+			verts.push(new Vec3d(obj_data["verts"][i][0], obj_data["verts"][i][1], obj_data["verts"][i][2]));
+		}
+
+		for (let i = 0; i < obj_data["faces"].length; i++) {
+			let face = obj_data["faces"][i];
+			this.triangles.push(new Triangle(verts[face[0] - 1], verts[face[1] - 1], verts[face[2] - 1]));
+		}
+	}
+
 }
 
 class Mat4x4 {
@@ -45,35 +59,17 @@ let mat_rotz = new Mat4x4();
 let mat_rotx = new Mat4x4();
 let camera = new Vec3d(0, 0, 0);
 
+let data;
+
+function preload() {
+	data = loadJSON("json_files/ship.json");
+}
+
 function setup() {
 	createCanvas(1000, 800);
 
-	// south
-	let south_t_1 = new Triangle(new Vec3d(0.0, 0.0, 0.0), new Vec3d(0.0, 1.0, 0.0), new Vec3d(1.0, 1.0, 0.0));
-	let south_t_2 = new Triangle(new Vec3d(0.0, 0.0, 0.0), new Vec3d(1.0, 1.0, 0), new Vec3d(1.0, 0.0, 0.0));
-	// east
-	let east_t_1 = new Triangle(new Vec3d(1.0, 0.0, 0.0), new Vec3d(1.0, 1.0, 0.0), new Vec3d(1.0, 1.0, 1.0));
-	let east_t_2 = new Triangle(new Vec3d(1.0, 0.0, 0.0), new Vec3d(1.0, 1.0, 1.0), new Vec3d(1.0, 0.0, 1.0));
-	// north
-	let north_t_1 = new Triangle(new Vec3d(1.0, 0.0, 1.0), new Vec3d(1.0, 1.0, 1.0), new Vec3d(0.0, 1.0, 1.0));
-	let north_t_2 = new Triangle(new Vec3d(1.0, 0.0, 1.0), new Vec3d(0.0, 1.0, 1.0), new Vec3d(0.0, 0.0, 1.0));
-	// west
-	let west_t_1 = new Triangle(new Vec3d(0.0, 0.0, 1.0), new Vec3d(0.0, 1.0, 1.0), new Vec3d(0.0, 1.0, 0.0));
-	let west_t_2 = new Triangle(new Vec3d(0.0, 0.0, 1.0), new Vec3d(0.0, 1.0, 0.0), new Vec3d(0.0, 0.0, 0.0));
-	// top
-	let top_t_1 = new Triangle(new Vec3d(0.0, 1.0, 0.0), new Vec3d(0.0, 1.0, 1.0), new Vec3d(1.0, 1.0, 1.0));
-	let top_t_2 = new Triangle(new Vec3d(0.0, 1.0, 0.0), new Vec3d(1.0, 1.0, 1.0), new Vec3d(1.0, 1.0, 0.0));
-	// bottom
-	let bottom_t_1 = new Triangle(new Vec3d(1.0, 0.0, 1.0), new Vec3d(0.0, 0.0, 1.0), new Vec3d(0.0, 0.0, 0.0));
-	let bottom_t_2 = new Triangle(new Vec3d(1.0, 0.0, 1.0), new Vec3d(0.0, 0.0, 0.0), new Vec3d(1.0, 0.0, 0.0));
-
-	mesh.triangles = [south_t_1, south_t_2, 
-					  east_t_1, east_t_2, 
-					  north_t_1, north_t_2, 
-					  west_t_1, west_t_2,
-					  top_t_1, top_t_2,
-					  bottom_t_1, bottom_t_2];
-
+	// load 3d object file into the mesh
+	mesh.loadObj(data);
 
 	// projection matrix
 	let near = 0.1;
@@ -122,9 +118,9 @@ function draw() {
 									  Mat4x4.multiply_matrix_vector(tri_rot_z.p[2], mat_rotx));
 
 		let tri_translated = tri_rot_zx;
-		tri_translated.p[0].z = tri_rot_zx.p[0].z + 3.0;
-		tri_translated.p[1].z = tri_rot_zx.p[1].z + 3.0;
-		tri_translated.p[2].z = tri_rot_zx.p[2].z + 3.0;
+		tri_translated.p[0].z = tri_rot_zx.p[0].z + 10.0;
+		tri_translated.p[1].z = tri_rot_zx.p[1].z + 10.0;
+		tri_translated.p[2].z = tri_rot_zx.p[2].z + 10.0;
 
 		// beginning getting cross product so can get normal of faces
 		let line1 = new Vec3d(tri_translated.p[1].x - tri_translated.p[0].x,
