@@ -7,8 +7,9 @@ class Vec3d {
 }
 
 class Triangle {
-	constructor(p1, p2, p3) {
+	constructor(p1, p2, p3, color = 0) {
 		this.p = [p1, p2, p3];
+		this.color = color;
 	}
 }
 
@@ -107,6 +108,10 @@ function draw() {
 	mat_rotx.mat[2][1] = -sin(theta * 0.5);
 	mat_rotx.mat[2][2] = cos(theta * 0.5);
 	mat_rotx.mat[3][3] = 1.0;
+
+	// array holding triangles which can be seen
+	// later on sort them by z coordinate so ones closest to camera drawn last
+	let tris_to_render = [];
 	
 	for (const tri of mesh.triangles) {
 		let tri_rot_z = new Triangle(Mat4x4.multiply_matrix_vector(tri.p[0], mat_rotz),
@@ -152,12 +157,16 @@ function draw() {
 			light_direction.z /= l;
 
 			let dp = normal.x * light_direction.x + normal.y * light_direction.y + normal.z * light_direction.z;
-			
+
 			// projection
 			let tri_projected = new Triangle(Mat4x4.multiply_matrix_vector(tri_translated.p[0], mat_proj),
 											Mat4x4.multiply_matrix_vector(tri_translated.p[1], mat_proj),
 											Mat4x4.multiply_matrix_vector(tri_translated.p[2], mat_proj));
 
+			// set shading of triangle
+			let color_rgb = 50 + dp * 205.0
+			tri_projected.color = color_rgb;
+			
 			// scale into view
 			tri_projected.p[0].x += 1.0;
 			tri_projected.p[0].y += 1.0;
@@ -173,16 +182,23 @@ function draw() {
 			tri_projected.p[2].x *= 0.5 * width;
 			tri_projected.p[2].y *= 0.5 * height;
 			
-			// drawing triangle at certain amount of gray to simulate shading
-			let color_rgb = 50 + dp * 205.0
-			stroke(color_rgb, color_rgb, color_rgb);
-			fill(color_rgb);
-
-			triangle(tri_projected.p[0].x, tri_projected.p[0].y,
+			tris_to_render.push(tri_projected);
+		}
+	}
+		
+	// sort triangles in tri_project from back to front
+	tris_to_render.sort(function compare(t1, t2) { 
+							let z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0;
+							let z2 =  (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0;
+							return z2 - z1;
+						});
+	
+	for (let tri_projected of tris_to_render) {
+		stroke(tri_projected.color, tri_projected.color, tri_projected.color);
+		fill(tri_projected.color);
+		triangle(tri_projected.p[0].x, tri_projected.p[0].y,
 					tri_projected.p[1].x, tri_projected.p[1].y,
 					tri_projected.p[2].x, tri_projected.p[2].y);
-		}
-
 	}
 }
 
