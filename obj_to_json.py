@@ -3,18 +3,21 @@ import re
 
 data = {"verts": [], "faces": []}
 
-with open("obj_files/ship.obj") as file:
+file_name = "teapot"
+
+with open(f"obj_files/{file_name}.obj") as file:
     for line in file:
-        if line.rstrip()[0] == "v":
-            match = re.findall("(-{0,1}\d+.\d+)", line.rstrip())
+        line = line.rstrip()
+        if len(line) > 0 and line[0] == "v":
+            match = re.findall("(-{0,1}\d+.\d+)", line)
             match = [float(n) for n in match]
             data["verts"].append(match)
-        elif line.rstrip()[0] == "f":
-            match = re.findall("(\d+)", line.rstrip())
+        elif len(line) > 0 and line[0] == "f":
+            match = re.findall("(\d+)", line)
             match = [int(n) for n in match]
             data["faces"].append(match)
 
 print(data)
 
-with open("json_files/ship.json", "w") as outfile:
+with open(f"json_files/{file_name}.json", "w") as outfile:
     json.dump(data, outfile)
