@@ -188,6 +188,89 @@ export function matrix_quick_inverse(m) {
 	return matrix;
 }
 
+export function vector_intersect_plane(plane_pt, plane_norm, line_start, line_end) {
+	/*
+	// my own implementation
+	let plane_n = vector_normalize(plane_norm);
+	let line_plane_vec = vector_sub(plane_pt, line_start);
+	let line_vec = vector_sub(line_end, line_start);
+	let d = (vector_dot(line_plane_vec, plane_n)) / (vector_dot(line_vec, plane_n));
+	let line_to_intersect = vector_mul(line_vec, d);
+	return vector_add(line_start, line_to_intersect);
+	*/
+	let plane_n = vector_normalize(plane_norm);
+	let plane_d = -vector_dot(plane_n, plane_pt);
+	let ad = vector_dot(line_start, plane_n);
+	let bd = vector_dot(line_end, plane_n);
+	// divide by 0 could happen here with bd-ad when line is parallel to plane
+	// but this would be super rare and floating point innaccuracy makes it
+	// very unlikely that it would be exactly 0
+	let t = (-plane_d - ad) / (bd - ad);
+	let line_start_to_end = vector_sub(line_end, line_start);
+	let line_to_intersect = vector_mul(line_start_to_end, t);
+	return vector_add(line_start, line_to_intersect);
+}
+
+// function that returns an array of clipped triangles
+// can either return array of size 0, 1, or 2
+export function clip_against_plane(plane_pt, plane_norm, tri) {
+	let plane_n = vector_normalize(plane_norm);
+
+	// function to return signed shortest distance from point to plane
+	// if distance sign positive, point lies "inside" plane
+	// this returns the distance in plane normal units but works since everything is relative
+	function dist(pt) {
+		return (plane_n.x * pt.x + plane_n.y * pt.y + plane_n.z * pt.z - vector_dot(plane_n, plane_pt));
+	}
+
+	let inside_pts = [];
+	let outside_pts = [];
+
+	let d0 = dist(tri.p[0]);
+	let d1 = dist(tri.p[1]);
+	let d2 = dist(tri.p[2]);
+
+	if (d0 >= 0) { inside_pts.push(tri.p[0]); } else { outside_pts.push(tri.p[0]) }
+	if (d1 >= 0) { inside_pts.push(tri.p[1]); } else { outside_pts.push(tri.p[1]) }
+	if (d2 >= 0) { inside_pts.push(tri.p[2]); } else { outside_pts.push(tri.p[2]) }
+
+	if (inside_pts.length == 0) {
+		return [];
+	}
+
+	if (inside_pts.length == 3) {
+		return [tri];
+	}
+
+	if (inside_pts.length == 1 && outside_pts.length == 2) {
+		// one point on inside so new triangle is just a smaller version of older triangle
+		// keep the original color and make 2 new dummy points that will be set to intersection
+		// of clipping plane
+		let clipped_tri = new Triangle(inside_pts[0], null, null, tri.color);
+
+		clipped_tri.p[1] = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[0]);
+		clipped_tri.p[2] = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[1]);
+
+		return [clipped_tri];
+	}
+
+	if (inside_pts.length == 2 && outside_pts.length == 1) {
+		// one point on outside so triangle intersects plane so 2 points on inside
+		// and 2 points intersect plane so there's 4 total points and a quad formed
+		// triangle created with CW orientation so normals are consistent, same with case above
+
+		let clipped_tri1 = new Triangle(inside_pts[0], null, null, tri.color);
+		clipped_tri1.p[1] = inside_pts[1];
+		clipped_tri1.p[2] = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[0]);
+
+		let clipped_tri2 = new Triangle(inside_pts[1], null, null, tri.color);
+		clipped_tri2.p[1] = clipped_tri1.p[2]; // shares point with triangle created above
+		clipped_tri2.p[2] = vector_intersect_plane(plane_pt, plane_n, inside_pts[1], outside_pts[0]);
+
+		return [clipped_tri1, clipped_tri2];
+	}
+}
+
 export function vector_add(v1, v2) {
 	return new Vec3d(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
 }

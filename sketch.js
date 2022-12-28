@@ -30,7 +30,7 @@ window.mouseClicked = function() {
 }
 
 window.preload = function() {
-	data = loadJSON("json_files/axis.json");
+	data = loadJSON("json_files/mountains.json");
 }
 
 window.setup = function() {
@@ -53,8 +53,8 @@ window.draw = function() {
 	// between draw calls so can get total offset from center of screen
 	// yaw -> rotation around the Y-Axis so looking left and right
 	// pitch -> rotation around the X-Axis so looking up and down
-	yaw -= movedX * mouse_sens;
-	pitch += movedY * mouse_sens;
+	yaw += movedX * mouse_sens;
+	pitch -= movedY * mouse_sens;
 
 	if (pitch > PI / 2) {
 		pitch = PI / 2;
@@ -72,7 +72,8 @@ window.draw = function() {
 	let mat_world = utils.matrix_multiply_matrix(mat_rotz, mat_rotx);
 	mat_world = utils.matrix_multiply_matrix(mat_world, mat_trans);
 
-	let up = new utils.Vec3d(0, 1, 0);
+	// not sure why up is -1 but it works, idk!
+	let up = new utils.Vec3d(0, -1, 0);
 	let target = new utils.Vec3d(0, 0, 1);
 	// look dir based on yaw and pitch values gotten from mouse movement
 	let look_dir = new utils.Vec3d(cos(yaw) * cos(pitch), sin(pitch), sin(yaw) * cos(pitch));
@@ -83,23 +84,30 @@ window.draw = function() {
 	let mat_view = utils.matrix_quick_inverse(mat_camera);
 
 	// processing user input for moving camera
+	let look_no_y = utils.vector_normalize(new utils.Vec3d(look_dir.x, 0.0, look_dir.z));
 	if (keyIsDown(87)) { // W = forward
-		camera.z += utils.vector_dot(new utils.Vec3d(0, 0, 1), look_dir) * walking_speed * deltaTime / 1000;
-		camera.x += utils.vector_dot(new utils.Vec3d(1, 0, 0), look_dir) * walking_speed * deltaTime / 1000;
+		camera.z += utils.vector_dot(new utils.Vec3d(0, 0, 1), look_no_y) * walking_speed * deltaTime / 1000;
+		camera.x += utils.vector_dot(new utils.Vec3d(1, 0, 0), look_no_y) * walking_speed * deltaTime / 1000;
 	}
 	if (keyIsDown(83)) { // S = backwards
-		camera.z -= utils.vector_dot(new utils.Vec3d(0, 0, 1), look_dir) * walking_speed * deltaTime / 1000;
-		camera.x -= utils.vector_dot(new utils.Vec3d(1, 0, 0), look_dir) * walking_speed * deltaTime / 1000;
+		camera.z -= utils.vector_dot(new utils.Vec3d(0, 0, 1), look_no_y) * walking_speed * deltaTime / 1000;
+		camera.x -= utils.vector_dot(new utils.Vec3d(1, 0, 0), look_no_y) * walking_speed * deltaTime / 1000;
 	}
 	if (keyIsDown(65)) { // A = left
-		let perp = utils.vector_cross(look_dir, up);
+		let perp = utils.vector_cross(look_no_y, up);
 		camera.z += perp.z * walking_speed * deltaTime / 1000;
 		camera.x += perp.x * walking_speed * deltaTime / 1000;
 	}
 	if (keyIsDown(68)) { // D = right
-		let perp = utils.vector_cross(look_dir, up);
+		let perp = utils.vector_cross(look_no_y, up);
 		camera.z -= perp.z * walking_speed * deltaTime / 1000;
 		camera.x -= perp.x * walking_speed * deltaTime / 1000;
+	}
+	if (keyIsDown(32)) { // space = up
+		camera.y -= up.y * walking_speed * deltaTime / 1000;
+	}
+	if (keyIsDown(16)) { // shift = down
+		camera.y += up.y * walking_speed * deltaTime / 1000;
 	}
 
 	// array holding triangles which can be seen
@@ -131,35 +139,42 @@ window.draw = function() {
 												utils.matrix_multiply_vector(tri_transformed.p[1], mat_view),
 												utils.matrix_multiply_vector(tri_transformed.p[2], mat_view));
 
-			// projection
-			let tri_projected = new utils.Triangle(utils.matrix_multiply_vector(tri_viewed.p[0], mat_proj),
-												   utils.matrix_multiply_vector(tri_viewed.p[1], mat_proj),
-												   utils.matrix_multiply_vector(tri_viewed.p[2], mat_proj));
+			// clip the viewed triangle against the near plane (plane right in front of camera)
+			// have to do this before projection happens because then there is no depth information,
+			// at least here we have depth information relative to the camera from the mat_view transformation								
+			let clipped_triangles = utils.clip_against_plane(new utils.Vec3d(0.0, 0.0, 0.1), new utils.Vec3d(0.0, 0.0, 1.0), tri_viewed);
+			// 0, 1, or 2 triangles could be created so loop through and create this variable amount of tris
+			for (let n = 0; n < clipped_triangles.length; n++) {
+				// projection
+				let tri_projected = new utils.Triangle(utils.matrix_multiply_vector(clipped_triangles[n].p[0], mat_proj),
+												   	   utils.matrix_multiply_vector(clipped_triangles[n].p[1], mat_proj),
+												   	   utils.matrix_multiply_vector(clipped_triangles[n].p[2], mat_proj));
+			
+				// scale into view by normalizing coordinates of tri_projected
+				tri_projected.p[0] = utils.vector_div(tri_projected.p[0], tri_projected.p[0].w);
+				tri_projected.p[1] = utils.vector_div(tri_projected.p[1], tri_projected.p[1].w);
+				tri_projected.p[2] = utils.vector_div(tri_projected.p[2], tri_projected.p[2].w);									
 
-			// scale into view by normalizing coordinates of tri_projected
-			tri_projected.p[0] = utils.vector_div(tri_projected.p[0], tri_projected.p[0].w);
-			tri_projected.p[1] = utils.vector_div(tri_projected.p[1], tri_projected.p[1].w);
-			tri_projected.p[2] = utils.vector_div(tri_projected.p[2], tri_projected.p[2].w);
-
-			// set shading of triangle
-			let color_rgb = 50 + dp * 205.0
-			tri_projected.color = color_rgb;
-			
-			// scale into view because by defaullt drawn at (0, 0) - upper left
-			// corner of screen
-			let offset_view = new utils.Vec3d(1.0, 1.0, 0.0);
-			tri_projected.p[0] = utils.vector_add(tri_projected.p[0], offset_view);
-			tri_projected.p[1] = utils.vector_add(tri_projected.p[1], offset_view);
-			tri_projected.p[2] = utils.vector_add(tri_projected.p[2], offset_view);
-			
-			tri_projected.p[0].x *= 0.5 * width;
-			tri_projected.p[0].y *= 0.5 * height;
-			tri_projected.p[1].x *= 0.5 * width;
-			tri_projected.p[1].y *= 0.5 * height;
-			tri_projected.p[2].x *= 0.5 * width;
-			tri_projected.p[2].y *= 0.5 * height;
-			
-			tris_to_render.push(tri_projected);
+				// set shading of triangle
+				let color_rgb = 50 + dp * 205.0
+				tri_projected.color = color_rgb;
+				
+				// scale into view because by defaullt drawn at (0, 0) - upper left
+				// corner of screen
+				let offset_view = new utils.Vec3d(1.0, 1.0, 0.0);
+				tri_projected.p[0] = utils.vector_add(tri_projected.p[0], offset_view);
+				tri_projected.p[1] = utils.vector_add(tri_projected.p[1], offset_view);
+				tri_projected.p[2] = utils.vector_add(tri_projected.p[2], offset_view);
+				
+				tri_projected.p[0].x *= 0.5 * width;
+				tri_projected.p[0].y *= 0.5 * height;
+				tri_projected.p[1].x *= 0.5 * width;
+				tri_projected.p[1].y *= 0.5 * height;
+				tri_projected.p[2].x *= 0.5 * width;
+				tri_projected.p[2].y *= 0.5 * height;
+				
+				tris_to_render.push(tri_projected);
+			}
 		}
 	}
 		
@@ -170,12 +185,42 @@ window.draw = function() {
 							return z2 - z1;
 						});
 	
-	for (let tri_projected of tris_to_render) {
-		stroke(tri_projected.color, tri_projected.color, tri_projected.color);
-		fill(tri_projected.color);
-		triangle(tri_projected.p[0].x, tri_projected.p[0].y,
-					tri_projected.p[1].x, tri_projected.p[1].y,
-					tri_projected.p[2].x, tri_projected.p[2].y);
+	for (let tri_to_render of tris_to_render) {
+		let tri_q = [tri_to_render];
+		let new_tris = 1;
+		let clipped_tris = [];
+
+		// clip the triangle(s) against the 4 screen planes
+		for (let p = 0; p < 4; p++) {
+			while (new_tris > 0) {
+				let test_tri = tri_q.shift();
+				new_tris -= 1;
+				
+				// clipping the triangles against the 4 screen bounds in order
+				// while loop will run until all the triangles originally in queue have clipped against this plane
+				// triangles generated by clip_against_plane not tested again for this plane and only for next plane
+				switch (p) {
+					case 0: clipped_tris = utils.clip_against_plane(new utils.Vec3d(0.0, 0.0, 0.0), new utils.Vec3d(0.0, 1.0, 0.0), test_tri); break;
+					case 1: clipped_tris = utils.clip_against_plane(new utils.Vec3d(0.0, height - 1, 0.0), new utils.Vec3d(0.0, -1.0, 0.0), test_tri); break;
+					case 2: clipped_tris = utils.clip_against_plane(new utils.Vec3d(0.0, 0.0, 0.0), new utils.Vec3d(1.0, 0.0, 0.0), test_tri); break;
+					case 3: clipped_tris = utils.clip_against_plane(new utils.Vec3d(width - 1, 0.0, 0.0), new utils.Vec3d(-1.0, 0.0, 0.0), test_tri); break;
+				}
+				// add triangles generated by clipping to the queue
+				for (let w = 0; w < clipped_tris.length; w++) {
+					tri_q.push(clipped_tris[w]);
+				}
+			}
+			// now the triangles generated by the clipping can be tested on the next plane
+			new_tris = tri_q.length;
+		}
+
+		for (let tri of tri_q) {
+			stroke(tri.color, tri.color, tri.color);
+			fill(tri.color);
+			triangle(tri.p[0].x, tri.p[0].y,
+					 tri.p[1].x, tri.p[1].y,
+					 tri.p[2].x, tri.p[2].y);
+		}
 	}
 }
 

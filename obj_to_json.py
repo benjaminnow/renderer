@@ -3,7 +3,7 @@ import re
 
 data = {"verts": [], "faces": []}
 
-file_name = "axis"
+file_name = "mountains"
 
 with open(f"obj_files/{file_name}.obj") as file:
     for line in file:
