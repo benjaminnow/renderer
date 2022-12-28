@@ -102,6 +102,10 @@ export function matrix_make_projection(fov, aspect_ratio, near, far) {
 	mat_proj.mat[1][1] = fov_rad;
 	mat_proj.mat[2][2] = far / (far - near);
 	mat_proj.mat[3][2] = (-far * near) / (far - near);
+	// other normalizations seem to work too, so don't have to have far in
+	// numerator necessarily
+	// mat_proj.mat[2][2] = 1.0 / (far - near);
+	// mat_proj.mat[3][2] = -near / (far - near);
 	mat_proj.mat[2][3] = 1.0;
 	mat_proj.mat[3][3] = 0.0;
 
@@ -118,6 +122,68 @@ export function matrix_multiply_matrix(m1, m2) {
 							   m1.mat[r][3] * m2.mat[3][c];
 		}
 	}
+
+	return matrix;
+}
+
+export function matrix_point_at(pos, target, up) {
+	// calculate new forward direction which is just line between pos and target
+	// this serves as our forward axis and we need to normalize it
+	let new_forward = vector_sub(target, pos);
+	new_forward = vector_normalize(new_forward);
+
+	// old up might not be orthogonal to new forward, so get projection of old
+	// up onto new forward and since new forward is unit vector, projection
+	// formula is dot product times new_forward, then we subtract from old up
+	// to get the new_up perpendicular to new_forward
+	let a = vector_mul(new_forward, vector_dot(up, new_forward));
+	let new_up = vector_sub(up, a);
+	new_up = vector_normalize(new_up);
+
+	let new_right = vector_cross(new_up, new_forward);
+
+	// creating "point at" matrix
+	let mat = new Mat4x4();
+	mat.mat[0][0] = new_right.x;
+	mat.mat[0][1] = new_right.y;
+	mat.mat[0][2] = new_right.z;
+	mat.mat[0][3] = 0;
+	mat.mat[1][0] = new_up.x;
+	mat.mat[1][1] = new_up.y;
+	mat.mat[1][2] = new_up.z;
+	mat.mat[1][3] = 0;
+	mat.mat[2][0] = new_forward.x;
+	mat.mat[2][1] = new_forward.y;
+	mat.mat[2][2] = new_forward.z;
+	mat.mat[2][3] = 0;
+	mat.mat[3][0] = pos.x;
+	mat.mat[3][1] = pos.y;
+	mat.mat[3][2] = pos.z;
+	mat.mat[3][3] = 1;
+
+	return mat;
+}
+
+export function matrix_quick_inverse(m) {
+	let matrix = new Mat4x4();
+
+	matrix.mat[0][0] = m.mat[0][0];
+	matrix.mat[0][1] = m.mat[1][0];
+	matrix.mat[0][2] = m.mat[2][0];
+	matrix.mat[0][3] = 0;
+	matrix.mat[1][0] = m.mat[0][1];
+	matrix.mat[1][1] = m.mat[1][1];
+	matrix.mat[1][2] = m.mat[2][1];
+	matrix.mat[1][3] = 0;
+	matrix.mat[2][0] = m.mat[0][2];
+	matrix.mat[2][1] = m.mat[1][2];
+	matrix.mat[2][2] = m.mat[2][2];
+	matrix.mat[2][3] = 0;
+	// last row dot products
+	matrix.mat[3][0] = -(m.mat[3][0] * matrix.mat[0][0] + m.mat[3][1] * matrix.mat[1][0] + m.mat[3][2] * matrix.mat[2][0]);
+	matrix.mat[3][1] = -(m.mat[3][0] * matrix.mat[0][1] + m.mat[3][1] * matrix.mat[1][1] + m.mat[3][2] * matrix.mat[2][1]);
+	matrix.mat[3][2] = -(m.mat[3][0] * matrix.mat[0][2] + m.mat[3][1] * matrix.mat[1][2] + m.mat[3][2] * matrix.mat[2][2]);
+	matrix.mat[3][3] = 1;
 
 	return matrix;
 }

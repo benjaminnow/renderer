@@ -6,11 +6,31 @@ let mat_rotz = new utils.Mat4x4();
 let mat_rotx = new utils.Mat4x4();
 let mat_trans = new utils.Mat4x4();
 let camera = new utils.Vec3d(0, 0, 0);
+let PI = 3.141592;
+let theta = 0.0;
+let yaw =  PI / 2;
+let pitch = 0.0;
+let walking_speed = 10.0;
+let mouse_sens = 0.01;
 
 let data;
 
+let mouse_locked = false;
+
+window.mouseClicked = function() {
+	// for some reason adding this console log makes it work
+	console.log();
+	if (!mouse_locked) {
+	  mouse_locked = true;
+	  requestPointerLock();
+	} else {
+	  exitPointerLock();
+	  mouse_locked = false;
+	}
+}
+
 window.preload = function() {
-	data = loadJSON("json_files/teapot.json");
+	data = loadJSON("json_files/axis.json");
 }
 
 window.setup = function() {
@@ -23,22 +43,64 @@ window.setup = function() {
 	mat_proj = utils.matrix_make_projection(90.0, height / width, 0.1, 1000.0);
 
 	// translation matrix
-	mat_trans = utils.matrix_make_translation(0.0, 0.0, 10.0);
+	mat_trans = utils.matrix_make_translation(0.0, 0.0, 20.0);
 }
-
-let theta = 0.0;
 
 window.draw = function() {
 	background(0);
 
+	// movedX and movedY hold the delta of how much the mouse position changed
+	// between draw calls so can get total offset from center of screen
+	// yaw -> rotation around the Y-Axis so looking left and right
+	// pitch -> rotation around the X-Axis so looking up and down
+	yaw -= movedX * mouse_sens;
+	pitch += movedY * mouse_sens;
+
+	if (pitch > PI / 2) {
+		pitch = PI / 2;
+	}
+	if (pitch < - PI / 2) {
+		pitch = - PI / 2;
+	}
+
 	// setting up rotation matrices
-	theta += deltaTime / 1000.0;
+	// theta += deltaTime / 1000.0;
 	utils.matrix_rotz(mat_rotz, theta);
 	utils.matrix_rotx(mat_rotx, theta * 0.5);
 
 	// creating world matrix which combines rotation, translation, projection
 	let mat_world = utils.matrix_multiply_matrix(mat_rotz, mat_rotx);
 	mat_world = utils.matrix_multiply_matrix(mat_world, mat_trans);
+
+	let up = new utils.Vec3d(0, 1, 0);
+	let target = new utils.Vec3d(0, 0, 1);
+	// look dir based on yaw and pitch values gotten from mouse movement
+	let look_dir = new utils.Vec3d(cos(yaw) * cos(pitch), sin(pitch), sin(yaw) * cos(pitch));
+	look_dir = utils.vector_normalize(look_dir);
+	target = utils.vector_add(camera, look_dir);
+
+	let mat_camera = utils.matrix_point_at(camera, target, up);
+	let mat_view = utils.matrix_quick_inverse(mat_camera);
+
+	// processing user input for moving camera
+	if (keyIsDown(87)) { // W = forward
+		camera.z += utils.vector_dot(new utils.Vec3d(0, 0, 1), look_dir) * walking_speed * deltaTime / 1000;
+		camera.x += utils.vector_dot(new utils.Vec3d(1, 0, 0), look_dir) * walking_speed * deltaTime / 1000;
+	}
+	if (keyIsDown(83)) { // S = backwards
+		camera.z -= utils.vector_dot(new utils.Vec3d(0, 0, 1), look_dir) * walking_speed * deltaTime / 1000;
+		camera.x -= utils.vector_dot(new utils.Vec3d(1, 0, 0), look_dir) * walking_speed * deltaTime / 1000;
+	}
+	if (keyIsDown(65)) { // A = left
+		let perp = utils.vector_cross(look_dir, up);
+		camera.z += perp.z * walking_speed * deltaTime / 1000;
+		camera.x += perp.x * walking_speed * deltaTime / 1000;
+	}
+	if (keyIsDown(68)) { // D = right
+		let perp = utils.vector_cross(look_dir, up);
+		camera.z -= perp.z * walking_speed * deltaTime / 1000;
+		camera.x -= perp.x * walking_speed * deltaTime / 1000;
+	}
 
 	// array holding triangles which can be seen
 	// later on sort them by z coordinate so ones closest to camera drawn last
@@ -64,10 +126,16 @@ window.draw = function() {
 
 			let dp = utils.vector_dot(light_direction, normal);
 
+			// convert world space to view space (though camera)
+			let tri_viewed = new utils.Triangle(utils.matrix_multiply_vector(tri_transformed.p[0], mat_view),
+												utils.matrix_multiply_vector(tri_transformed.p[1], mat_view),
+												utils.matrix_multiply_vector(tri_transformed.p[2], mat_view));
+
 			// projection
-			let tri_projected = new utils.Triangle(utils.matrix_multiply_vector(tri_transformed.p[0], mat_proj),
-												   utils.matrix_multiply_vector(tri_transformed.p[1], mat_proj),
-												   utils.matrix_multiply_vector(tri_transformed.p[2], mat_proj));
+			let tri_projected = new utils.Triangle(utils.matrix_multiply_vector(tri_viewed.p[0], mat_proj),
+												   utils.matrix_multiply_vector(tri_viewed.p[1], mat_proj),
+												   utils.matrix_multiply_vector(tri_viewed.p[2], mat_proj));
+
 			// scale into view by normalizing coordinates of tri_projected
 			tri_projected.p[0] = utils.vector_div(tri_projected.p[0], tri_projected.p[0].w);
 			tri_projected.p[1] = utils.vector_div(tri_projected.p[1], tri_projected.p[1].w);
@@ -77,7 +145,8 @@ window.draw = function() {
 			let color_rgb = 50 + dp * 205.0
 			tri_projected.color = color_rgb;
 			
-			// scale into view
+			// scale into view because by defaullt drawn at (0, 0) - upper left
+			// corner of screen
 			let offset_view = new utils.Vec3d(1.0, 1.0, 0.0);
 			tri_projected.p[0] = utils.vector_add(tri_projected.p[0], offset_view);
 			tri_projected.p[1] = utils.vector_add(tri_projected.p[1], offset_view);
