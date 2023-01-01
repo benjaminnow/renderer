@@ -13,9 +13,9 @@ Functionality:
 In Progress:
 - adding textures
 
-### Interactive Demo
+## Interactive Demo
 
-You can play the demo here: benjaminnow.github.io/renderer/
+You can play the demo here: [benjaminnow.github.io/renderer/](benjaminnow.github.io/renderer/)
 
 Controls:
 - WASD for movement
@@ -26,7 +26,7 @@ Controls:
 If you click in the window, your mouse will disappear and you can get it back by pressing Escape.
 
 
-### My Notes
+## My Notes
 
 Some concepts were pretty mathematical so I spent some time writing my own notes to understand them better.
 
@@ -36,7 +36,7 @@ In order:
 - [How to add First-Person control to the camera](notes/fps%20camera%20control.pdf)
 - [How to Clip Triangles to prevent artifacts](notes/clipping.pdf)
 
-### Credits
+## Credits
 
 I can't thank [Javidx9](https://www.youtube.com/@javidx9) on YouTube enough for explaining many of these concepts in
 a simple way.
