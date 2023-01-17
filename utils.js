@@ -1,3 +1,10 @@
+export class Vec2d {
+	constructor(u = 0, v = 0) {
+		this.u = u;
+		this.v = v;
+	}
+}
+
 export class Vec3d {
 	constructor(x = 0, y = 0, z = 0, w = 1) {
 		this.x = x;
@@ -8,8 +15,9 @@ export class Vec3d {
 }
 
 export class Triangle {
-	constructor(p1, p2, p3, color = 0) {
+	constructor(p1, p2, p3, t1, t2, t3, color = 0) {
 		this.p = [p1, p2, p3];
+		this.t = [t1, t2, t3];
 		this.color = color;
 	}
 }
@@ -208,7 +216,13 @@ export function vector_intersect_plane(plane_pt, plane_norm, line_start, line_en
 	let t = (-plane_d - ad) / (bd - ad);
 	let line_start_to_end = vector_sub(line_end, line_start);
 	let line_to_intersect = vector_mul(line_start_to_end, t);
-	return vector_add(line_start, line_to_intersect);
+
+	// return t value so we can adjust texture coordinates from clipping
+	// t will be normalized value between texture coordinates so we can linearly interpolate and get new texture point
+	return {
+		't': t,
+		'intersect_pt': vector_add(line_start, line_to_intersect)
+	};
 }
 
 // function that returns an array of clipped triangles
@@ -225,14 +239,17 @@ export function clip_against_plane(plane_pt, plane_norm, tri) {
 
 	let inside_pts = [];
 	let outside_pts = [];
+	let inside_tex = [];
+	let outside_tex = [];
+
 
 	let d0 = dist(tri.p[0]);
 	let d1 = dist(tri.p[1]);
 	let d2 = dist(tri.p[2]);
 
-	if (d0 >= 0) { inside_pts.push(tri.p[0]); } else { outside_pts.push(tri.p[0]) }
-	if (d1 >= 0) { inside_pts.push(tri.p[1]); } else { outside_pts.push(tri.p[1]) }
-	if (d2 >= 0) { inside_pts.push(tri.p[2]); } else { outside_pts.push(tri.p[2]) }
+	if (d0 >= 0) { inside_pts.push(tri.p[0]); inside_tex.push(tri.t[0]); } else { outside_pts.push(tri.p[0]); outside_tex.push(tri.t[0]); }
+	if (d1 >= 0) { inside_pts.push(tri.p[1]); inside_tex.push(tri.t[1]); } else { outside_pts.push(tri.p[1]); outside_tex.push(tri.t[1]); }
+	if (d2 >= 0) { inside_pts.push(tri.p[2]); inside_tex.push(tri.t[2]); } else { outside_pts.push(tri.p[2]); outside_tex.push(tri.t[2]); }
 
 	if (inside_pts.length == 0) {
 		return [];
@@ -246,10 +263,17 @@ export function clip_against_plane(plane_pt, plane_norm, tri) {
 		// one point on inside so new triangle is just a smaller version of older triangle
 		// keep the original color and make 2 new dummy points that will be set to intersection
 		// of clipping plane
-		let clipped_tri = new Triangle(inside_pts[0], null, null, tri.color);
+		let clipped_tri = new Triangle(inside_pts[0], null, null, inside_tex[0], null, null, tri.color);
 
-		clipped_tri.p[1] = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[0]);
-		clipped_tri.p[2] = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[1]);
+		let first_clip = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[0]);
+		clipped_tri.p[1] = first_clip.intersect_pt;
+		clipped_tri.t[1] = new Vec2d(first_clip.t * (outside_tex[0].u - inside_tex[0].u) + inside_tex[0].u,
+									 first_clip.t * (outside_tex[0].v - inside_tex[0].v) + inside_tex[0].v);
+
+		let second_clip = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[1]);
+		clipped_tri.p[2] = second_clip.intersect_pt;
+		clipped_tri.t[2] = new Vec2d(second_clip.t * (outside_tex[1].u - inside_tex[0].u) + inside_tex[0].u,
+									 second_clip.t * (outside_tex[1].v - inside_tex[0].v) + inside_tex[0].v);
 
 		return [clipped_tri];
 	}
@@ -259,13 +283,17 @@ export function clip_against_plane(plane_pt, plane_norm, tri) {
 		// and 2 points intersect plane so there's 4 total points and a quad formed
 		// triangle created with CW orientation so normals are consistent, same with case above
 
-		let clipped_tri1 = new Triangle(inside_pts[0], null, null, tri.color);
-		clipped_tri1.p[1] = inside_pts[1];
-		clipped_tri1.p[2] = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[0]);
+		let clipped_tri1 = new Triangle(inside_pts[0], inside_pts[1], null, inside_tex[0], inside_tex[1], null, tri.color);
+		let first_clipped_tri = vector_intersect_plane(plane_pt, plane_n, inside_pts[0], outside_pts[0]);
+		clipped_tri1.p[2] = first_clipped_tri.intersect_pt;
+		clipped_tri1.t[2] = new Vec2d(first_clipped_tri.t * (outside_tex[0].u - inside_tex[0].u) + inside_tex[0].u,
+									  first_clipped_tri.t * (outside_tex[0].v - inside_tex[0].v) + inside_tex[0].v);
 
-		let clipped_tri2 = new Triangle(inside_pts[1], null, null, tri.color);
-		clipped_tri2.p[1] = clipped_tri1.p[2]; // shares point with triangle created above
-		clipped_tri2.p[2] = vector_intersect_plane(plane_pt, plane_n, inside_pts[1], outside_pts[0]);
+		let clipped_tri2 = new Triangle(inside_pts[1], clipped_tri1.p[2], null, inside_tex[1], clipped_tri1.t[2], null, tri.color);
+		let second_clipped_tri = vector_intersect_plane(plane_pt, plane_n, inside_pts[1], outside_pts[0]);
+		clipped_tri2.p[2] = second_clipped_tri.intersect_pt;
+		clipped_tri2.t[2] = new Vec2d(second_clipped_tri.t * (outside_tex[0].u - inside_tex[1].u) + inside_tex[1].u,
+									  second_clipped_tri.t * (outside_tex[0].v - inside_tex[1].v) + inside_tex[1].v);
 
 		return [clipped_tri1, clipped_tri2];
 	}

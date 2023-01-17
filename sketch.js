@@ -37,13 +37,51 @@ window.setup = function() {
 	createCanvas(1000, 800);
 
 	// load 3d object file into the mesh
-	mesh.loadObj(data);
+	// mesh.loadObj(data);
+
+	// south
+	let south_t_1 = new utils.Triangle(new utils.Vec3d(0.0, 0.0, 0.0, 1.0), new utils.Vec3d(0.0, 1.0, 0.0, 1.0), new utils.Vec3d(1.0, 1.0, 0.0, 1.0),
+									   new utils.Vec2d(0.0, 1.0), new utils.Vec2d(0.0, 0.0), new utils.Vec2d(1.0, 0.0));
+	let south_t_2 = new utils.Triangle(new utils.Vec3d(0.0, 0.0, 0.0, 1.0), new utils.Vec3d(1.0, 1.0, 0.0, 1.0), new utils.Vec3d(1.0, 0.0, 0.0, 1.0),
+									   new utils.Vec2d(0.0, 1.0), new utils.Vec2d(1.0, 0.0), new utils.Vec2d(1.0, 1.0));
+	// east
+	let east_t_1 = new utils.Triangle(new utils.Vec3d(1.0, 0.0, 0.0, 1.0), new utils.Vec3d(1.0, 1.0, 0.0, 1.0), new utils.Vec3d(1.0, 1.0, 1.0, 1.0),
+									  new utils.Vec2d(0.0, 1.0), new utils.Vec2d(0.0, 0.0), new utils.Vec2d(1.0, 0.0));
+	let east_t_2 = new utils.Triangle(new utils.Vec3d(1.0, 0.0, 0.0, 1.0), new utils.Vec3d(1.0, 1.0, 1.0, 1.0), new utils.Vec3d(1.0, 0.0, 1.0, 1.0),
+									  new utils.Vec2d(0.0, 1.0), new utils.Vec2d(1.0, 0.0), new utils.Vec2d(1.0, 1.0));
+	// north
+	let north_t_1 = new utils.Triangle(new utils.Vec3d(1.0, 0.0, 1.0, 1.0), new utils.Vec3d(1.0, 1.0, 1.0, 1.0), new utils.Vec3d(0.0, 1.0, 1.0, 1.0),
+									   new utils.Vec2d(0.0, 1.0), new utils.Vec2d(0.0, 0.0), new utils.Vec2d(1.0, 0.0));
+	let north_t_2 = new utils.Triangle(new utils.Vec3d(1.0, 0.0, 1.0, 1.0), new utils.Vec3d(0.0, 1.0, 1.0, 1.0), new utils.Vec3d(0.0, 0.0, 1.0, 1.0),
+									   new utils.Vec2d(0.0, 1.0), new utils.Vec2d(1.0, 0.0), new utils.Vec2d(1.0, 1.0));
+	// west
+	let west_t_1 = new utils.Triangle(new utils.Vec3d(0.0, 0.0, 1.0, 1.0), new utils.Vec3d(0.0, 1.0, 1.0, 1.0), new utils.Vec3d(0.0, 1.0, 0.0, 1.0),
+									  new utils.Vec2d(0.0, 1.0), new utils.Vec2d(0.0, 0.0), new utils.Vec2d(1.0, 0.0));
+	let west_t_2 = new utils.Triangle(new utils.Vec3d(0.0, 0.0, 1.0, 1.0), new utils.Vec3d(0.0, 1.0, 0.0, 1.0), new utils.Vec3d(0.0, 0.0, 0.0, 1.0),
+									  new utils.Vec2d(0.0, 1.0), new utils.Vec2d(1.0, 0.0), new utils.Vec2d(1.0, 1.0));
+	// top
+	let top_t_1 = new utils.Triangle(new utils.Vec3d(0.0, 1.0, 0.0, 1.0), new utils.Vec3d(0.0, 1.0, 1.0, 1.0), new utils.Vec3d(1.0, 1.0, 1.0, 1.0),
+									 new utils.Vec2d(0.0, 1.0), new utils.Vec2d(0.0, 0.0), new utils.Vec2d(1.0, 0.0));
+	let top_t_2 = new utils.Triangle(new utils.Vec3d(0.0, 1.0, 0.0, 1.0), new utils.Vec3d(1.0, 1.0, 1.0, 1.0), new utils.Vec3d(1.0, 1.0, 0.0, 1.0),
+									 new utils.Vec2d(0.0, 1.0), new utils.Vec2d(1.0, 0.0), new utils.Vec2d(1.0, 1.0));
+	// bottom
+	let bottom_t_1 = new utils.Triangle(new utils.Vec3d(1.0, 0.0, 1.0, 1.0), new utils.Vec3d(0.0, 0.0, 1.0, 1.0), new utils.Vec3d(0.0, 0.0, 0.0, 1.0),
+										new utils.Vec2d(0.0, 1.0), new utils.Vec2d(0.0, 0.0), new utils.Vec2d(1.0, 0.0));
+	let bottom_t_2 = new utils.Triangle(new utils.Vec3d(1.0, 0.0, 1.0, 1.0), new utils.Vec3d(0.0, 0.0, 0.0, 1.0), new utils.Vec3d(1.0, 0.0, 0.0, 1.0),
+										new utils.Vec2d(0.0, 1.0), new utils.Vec2d(1.0, 0.0), new utils.Vec2d(1.0, 1.0));
+
+	mesh.triangles = [south_t_1, south_t_2, 
+					  east_t_1, east_t_2, 
+					  north_t_1, north_t_2, 
+					  west_t_1, west_t_2,
+					  top_t_1, top_t_2,
+					  bottom_t_1, bottom_t_2];
 
 	// projection matrix
 	mat_proj = utils.matrix_make_projection(90.0, height / width, 0.1, 1000.0);
 
 	// translation matrix
-	mat_trans = utils.matrix_make_translation(0.0, 0.0, 20.0);
+	mat_trans = utils.matrix_make_translation(0.0, 0.0, 10.0);
 }
 
 window.draw = function() {
@@ -117,7 +155,8 @@ window.draw = function() {
 	for (const tri of mesh.triangles) {
 		let tri_transformed = new utils.Triangle(utils.matrix_multiply_vector(tri.p[0], mat_world),
 												 utils.matrix_multiply_vector(tri.p[1], mat_world),
-												 utils.matrix_multiply_vector(tri.p[2], mat_world));
+												 utils.matrix_multiply_vector(tri.p[2], mat_world),
+												 tri.t[0], tri.t[1], tri.t[2]);
 
 		// beginning getting cross product so can get normal of faces
 		let line1 = utils.vector_sub(tri_transformed.p[1], tri_transformed.p[0]);
@@ -137,7 +176,8 @@ window.draw = function() {
 			// convert world space to view space (though camera)
 			let tri_viewed = new utils.Triangle(utils.matrix_multiply_vector(tri_transformed.p[0], mat_view),
 												utils.matrix_multiply_vector(tri_transformed.p[1], mat_view),
-												utils.matrix_multiply_vector(tri_transformed.p[2], mat_view));
+												utils.matrix_multiply_vector(tri_transformed.p[2], mat_view),
+												tri_transformed.t[0], tri_transformed.t[1], tri_transformed.t[2]);
 
 			// clip the viewed triangle against the near plane (plane right in front of camera)
 			// have to do this before projection happens because then there is no depth information,
@@ -148,7 +188,8 @@ window.draw = function() {
 				// projection
 				let tri_projected = new utils.Triangle(utils.matrix_multiply_vector(clipped_triangles[n].p[0], mat_proj),
 												   	   utils.matrix_multiply_vector(clipped_triangles[n].p[1], mat_proj),
-												   	   utils.matrix_multiply_vector(clipped_triangles[n].p[2], mat_proj));
+												   	   utils.matrix_multiply_vector(clipped_triangles[n].p[2], mat_proj),
+													   clipped_triangles[n].t[0], clipped_triangles[n].t[1], clipped_triangles[n].t[2]);
 			
 				// scale into view by normalizing coordinates of tri_projected
 				tri_projected.p[0] = utils.vector_div(tri_projected.p[0], tri_projected.p[0].w);
@@ -215,8 +256,10 @@ window.draw = function() {
 		}
 
 		for (let tri of tri_q) {
-			stroke(tri.color, tri.color, tri.color);
-			fill(tri.color);
+			// stroke(tri.color, tri.color, tri.color);
+			// fill(tri.color);
+			fill(0);
+			stroke(255, 255, 255);
 			triangle(tri.p[0].x, tri.p[0].y,
 					 tri.p[1].x, tri.p[1].y,
 					 tri.p[2].x, tri.p[2].y);

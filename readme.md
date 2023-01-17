@@ -11,6 +11,7 @@ Functionality:
 - triangle clipping
 
 In Progress:
+- support for sprites/images
 - adding textures
 
 ## Interactive Demo
