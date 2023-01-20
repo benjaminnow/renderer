@@ -5,7 +5,7 @@ data = {"verts": [], "faces": []}
 
 file_name = "mountains"
 
-with open(f"obj_files/{file_name}.obj") as file:
+with open(f"../obj_files/{file_name}.obj") as file:
     for line in file:
         line = line.rstrip()
         if len(line) > 0 and line[0] == "v":
@@ -19,5 +19,5 @@ with open(f"obj_files/{file_name}.obj") as file:
 
 print(data)
 
-with open(f"json_files/{file_name}.json", "w") as outfile:
+with open(f"../json_files/{file_name}.json", "w") as outfile:
     json.dump(data, outfile)
